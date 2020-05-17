@@ -1,0 +1,19 @@
+[package]
+name = "pycrossterm"
+version = "0.1.0"
+edition = "2018"
+authors = ["Daniel Griffin"]
+license = "MIT"
+
+
+[lib]
+name = "pycrossterm"
+crate-type = ["cdylib"]
+
+[dependencies.pyo3]
+version = "*"
+features = ["extension-module"]
+
+
+[dependencies]
+crossterm = "*"
