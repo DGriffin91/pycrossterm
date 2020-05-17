@@ -1,5 +1,5 @@
 # pycrossterm
-Python bindings for crossterm: A Cross platform terminal library in rust
+Python bindings for [crossterm](https://github.com/crossterm-rs/crossterm): A Cross platform terminal library in rust
 
 ## Building & installing pycrossterm from source
 
