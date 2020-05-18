@@ -1,44 +1,50 @@
-# copy "..\target\debug\pycrossterm.dll" "pycrossterm.pyd" /Y
-import pycrossterm as term
+# copy "..\..\target\debug\pycrossterm.dll" "pycrossterm.pyd" /Y
 import time
 import atexit
+from pycrossterm import cursor, event, style, terminal, attribute, StyledContent
+
+color = style.color
+named_color = style.named_color
 
 
 def exit_handler():
-    term.style.set_foreground_color(255, 255, 255)
-    term.cursor.enable_blinking()
-    term.cursor.show()
+    style.set_foreground_color(255, 255, 255)
+    cursor.enable_blinking()
+    cursor.show()
 
 
 atexit.register(exit_handler)
 
-term.event.enable_mouse_capture()
+event.enable_mouse_capture()
 
 
-term.style.set_foreground_color(128, 128, 0)
+style.set_foreground_color(128, 128, 0)
 print("!!!")
-term.style.set_foreground_color(255, 128, 0)
+style.set_foreground_color(255, 128, 0)
 print("!!!")
-term.style.set_foreground_color(255, 255, 255)
+style.set_foreground_color(255, 255, 255)
 print("!!!")
-event = term.event.read()
-print(event)
-# term.test_stdout()
+StyledContent("TEST TEST TEST\nTEST TEST").color(color(255, 0, 255)).on(
+    color(50, 50, 50)
+).attribute(
+    attribute.CrossedOut()  # Wont work in windows CMD
+).print()
+e = event.read()
+print(e)
 
-term.terminal.clear("All")
-term.cursor.disable_blinking()
+
+terminal.clear("All")
+cursor.disable_blinking()
 while True:
-    term.cursor.hide()
-    event = term.event.read()
-    if event.event == "MouseDown":
-        term.style.set_foreground_color(255, 0, 0)
-        term.cursor.move_to(event.x, event.y)
+    cursor.hide()
+    e = event.read()
+    if e.event == "MouseDown":
+        style.set_foreground_color(255, 0, 0)
+        cursor.move_to(e.x, e.y)
         print("P")
-    elif event.event == "MouseUp":
-        term.style.set_foreground_color(0, 255, 0)
-        term.cursor.move_to(event.x, event.y)
-        print("R")
-    elif event.event == "MouseDrag":
-        term.style.set_foreground_color(0, 0, 255)
-        term.cursor.move_to(event.x, event.y)
-        print("D")
+    elif e.event == "MouseUp":
+        cursor.move_to(e.x, e.y)
+        StyledContent("X").color(named_color("Black")).on(named_color("White")).print()
+    elif e.event == "MouseDrag":
+        cursor.move_to(e.x, e.y)
+        style.new("X").color(color(0, 0, 255)).on(color(50, 50, 50)).print()

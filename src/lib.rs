@@ -115,10 +115,140 @@ fn style(_py: Python, m: &PyModule) -> PyResult<()> {
         };
         Ok(())
     }
+    #[pyfn(m, "new")]
+    fn new_py(string: String) -> PyResult<StyledContent> {
+        Ok(StyledContent {
+            string,
+            foreground_color: Color {
+                r: 255,
+                g: 255,
+                b: 255,
+                color_name: String::new(),
+            },
+            background_color: Color {
+                r: 0,
+                g: 0,
+                b: 0,
+                color_name: String::new(),
+            },
+            attributes: Vec::new(),
+        })
+    }
+
+    #[pyfn(m, "color")]
+    fn color_py(r: u8, g: u8, b: u8) -> PyResult<Color> {
+        Ok(Color {
+            r,
+            g,
+            b,
+            color_name: String::new(),
+        })
+    }
+    #[pyfn(m, "named_color")]
+    fn named_color_py(s: String) -> PyResult<Color> {
+        Ok(Color {
+            r: 0,
+            g: 0,
+            b: 0,
+            color_name: s,
+        })
+    }
     Ok(())
 }
 
-#[pyfunction]
+#[pyclass]
+#[derive(Debug, Clone, Default)]
+struct Color {
+    r: u8,
+    g: u8,
+    b: u8,
+    color_name: String,
+}
+
+#[pyclass]
+//#[pyclass(extends=PyDict)]
+#[derive(Debug, Clone, Default)]
+struct StyledContent {
+    #[pyo3(get, set)]
+    string: String,
+    #[pyo3(get, set)]
+    foreground_color: Color,
+    #[pyo3(get, set)]
+    background_color: Color,
+    attributes: Vec<String>,
+}
+
+#[pymethods]
+impl StyledContent {
+    #[new]
+    fn new(string: String) -> Self {
+        StyledContent {
+            string,
+            foreground_color: Color {
+                r: 255,
+                g: 255,
+                b: 255,
+                color_name: String::new(),
+            },
+            background_color: Color {
+                r: 255,
+                g: 255,
+                b: 255,
+                color_name: String::new(),
+            },
+            attributes: Vec::new(),
+        }
+    }
+
+    pub fn color(mut slf: PyRefMut<Self>, color: Color) -> PyResult<Py<Self>> {
+        slf.foreground_color = color;
+        Ok(slf.into())
+    }
+
+    pub fn on(mut slf: PyRefMut<Self>, color: Color) -> PyResult<Py<Self>> {
+        slf.background_color = color;
+        Ok(slf.into())
+    }
+
+    pub fn content(slf: PyRef<Self>) -> PyResult<String> {
+        Ok(slf.string.clone())
+    }
+
+    pub fn attribute(mut slf: PyRefMut<Self>, attrib: String) -> PyResult<Py<Self>> {
+        slf.attributes.push(attrib);
+        Ok(slf.into())
+    }
+
+    pub fn print(slf: PyRefMut<Self>) -> PyResult<()> {
+        let mut styled = style::style(&slf.string[..]);
+        styled = styled.with(convert_color(&slf.foreground_color));
+        styled = styled.on(convert_color(&slf.background_color));
+        for attr in slf.attributes.iter() {
+            match attribute_from_string(attr.into()) {
+                Some(a) => styled = styled.attribute(a),
+                None => (),
+            }
+        }
+        println!("{}", styled);
+        Ok(())
+    }
+}
+
+fn convert_color(color: &Color) -> style::Color {
+    if color.color_name == "" {
+        return style::Color::Rgb {
+            r: color.r,
+            g: color.g,
+            b: color.b,
+        };
+    } else {
+        match (&color.color_name[..]).parse() {
+            Err(_e) => return style::Color::White,
+            Ok(c) => return c,
+        }
+    }
+}
+
 #[pymodule]
 fn event(_py: Python, m: &PyModule) -> PyResult<()> {
     #[pyclass]
@@ -208,6 +338,107 @@ fn event(_py: Python, m: &PyModule) -> PyResult<()> {
         Ok(())
     }
 
+    Ok(())
+}
+
+#[pymodule]
+fn attribute(_py: Python, m: &PyModule) -> PyResult<()> {
+    #[pyfn(m, "Reset")]
+    fn reset_py() -> PyResult<String> {
+        Ok(String::from("Reset"))
+    }
+    #[pyfn(m, "Bold")]
+    fn bold_py() -> PyResult<String> {
+        Ok(String::from("Bold"))
+    }
+    #[pyfn(m, "Dim")]
+    fn dim_py() -> PyResult<String> {
+        Ok(String::from("Dim"))
+    }
+    #[pyfn(m, "Italic")]
+    fn italic_py() -> PyResult<String> {
+        Ok(String::from("Italic"))
+    }
+    #[pyfn(m, "Underlined")]
+    fn underlined_py() -> PyResult<String> {
+        Ok(String::from("Underlined"))
+    }
+    #[pyfn(m, "SlowBlink")]
+    fn slowblink_py() -> PyResult<String> {
+        Ok(String::from("SlowBlink"))
+    }
+    #[pyfn(m, "RapidBlink")]
+    fn rapidblink_py() -> PyResult<String> {
+        Ok(String::from("RapidBlink"))
+    }
+    #[pyfn(m, "Reverse")]
+    fn reverse_py() -> PyResult<String> {
+        Ok(String::from("Reverse"))
+    }
+    #[pyfn(m, "Hidden")]
+    fn hidden_py() -> PyResult<String> {
+        Ok(String::from("Hidden"))
+    }
+    #[pyfn(m, "CrossedOut")]
+    fn crossedout_py() -> PyResult<String> {
+        Ok(String::from("CrossedOut"))
+    }
+    #[pyfn(m, "Fraktur")]
+    fn fraktur_py() -> PyResult<String> {
+        Ok(String::from("Fraktur"))
+    }
+    #[pyfn(m, "NoBold")]
+    fn nobold_py() -> PyResult<String> {
+        Ok(String::from("NoBold"))
+    }
+    #[pyfn(m, "NormalIntensity")]
+    fn normalintensity_py() -> PyResult<String> {
+        Ok(String::from("NormalIntensity"))
+    }
+    #[pyfn(m, "NoItalic")]
+    fn noitalic_py() -> PyResult<String> {
+        Ok(String::from("NoItalic"))
+    }
+    #[pyfn(m, "NoUnderline")]
+    fn nounderline_py() -> PyResult<String> {
+        Ok(String::from("NoUnderline"))
+    }
+    #[pyfn(m, "NoBlink")]
+    fn noblink_py() -> PyResult<String> {
+        Ok(String::from("NoBlink"))
+    }
+    #[pyfn(m, "NoReverse")]
+    fn noreverse_py() -> PyResult<String> {
+        Ok(String::from("NoReverse"))
+    }
+    #[pyfn(m, "NoHidden")]
+    fn nohidden_py() -> PyResult<String> {
+        Ok(String::from("NoHidden"))
+    }
+    #[pyfn(m, "NotCrossedOut")]
+    fn notcrossedout_py() -> PyResult<String> {
+        Ok(String::from("NotCrossedOut"))
+    }
+    #[pyfn(m, "Framed")]
+    fn framed_py() -> PyResult<String> {
+        Ok(String::from("Framed"))
+    }
+    #[pyfn(m, "Encircled")]
+    fn encircled_py() -> PyResult<String> {
+        Ok(String::from("Encircled"))
+    }
+    #[pyfn(m, "OverLined")]
+    fn overlined_py() -> PyResult<String> {
+        Ok(String::from("OverLined"))
+    }
+    #[pyfn(m, "NotFramedOrEncir")]
+    fn notframedorencir_py() -> PyResult<String> {
+        Ok(String::from("NotFramedOrEncir"))
+    }
+    #[pyfn(m, "NotOverLined")]
+    fn notoverlined_py() -> PyResult<String> {
+        Ok(String::from("NotOverLined"))
+    }
     Ok(())
 }
 
@@ -305,5 +536,7 @@ fn pycrossterm(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pymodule!(event))?;
     m.add_wrapped(wrap_pymodule!(style))?;
     m.add_wrapped(wrap_pymodule!(terminal))?;
+    m.add_wrapped(wrap_pymodule!(attribute))?;
+    m.add_class::<StyledContent>()?;
     Ok(())
 }
