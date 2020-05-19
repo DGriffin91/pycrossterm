@@ -10,19 +10,32 @@ use std::io::stdout;
 
 #[pymodule]
 fn terminal(_py: Python, m: &PyModule) -> PyResult<()> {
-    #[pyfn(m, "clear")]
-    fn clear_py(kind: String) -> PyResult<()> {
-        let kind = match &kind.to_string()[..] {
-            "All" => terminal::ClearType::All,
-            "FromCursorDown" => terminal::ClearType::FromCursorDown,
-            "FromCursorUp" => terminal::ClearType::FromCursorUp,
-            "CurrentLine" => terminal::ClearType::CurrentLine,
-            "UntilNewLine" => terminal::ClearType::UntilNewLine,
-            _ => terminal::ClearType::All,
-        };
-        errconv(stdout().execute(terminal::Clear(kind)))?;
+    #[pyfn(m, "clear_all")]
+    fn clear_all_py() -> PyResult<()> {
+        errconv(stdout().execute(terminal::Clear(terminal::ClearType::All)))?;
         Ok(())
     }
+    #[pyfn(m, "clear_from_cursor_down")]
+    fn clear_from_cursor_down_py() -> PyResult<()> {
+        errconv(stdout().execute(terminal::Clear(terminal::ClearType::FromCursorDown)))?;
+        Ok(())
+    }
+    #[pyfn(m, "clear_from_cursor_up")]
+    fn clear_from_cursor_up_py() -> PyResult<()> {
+        errconv(stdout().execute(terminal::Clear(terminal::ClearType::FromCursorUp)))?;
+        Ok(())
+    }
+    #[pyfn(m, "clear_current_line")]
+    fn clear_current_line_py() -> PyResult<()> {
+        errconv(stdout().execute(terminal::Clear(terminal::ClearType::CurrentLine)))?;
+        Ok(())
+    }
+    #[pyfn(m, "clear_unitl_new_line")]
+    fn clear_unitl_new_line_py() -> PyResult<()> {
+        errconv(stdout().execute(terminal::Clear(terminal::ClearType::UntilNewLine)))?;
+        Ok(())
+    }
+
     #[pyfn(m, "scroll_up")]
     fn scroll_up_py(n: u16) -> PyResult<()> {
         errconv(stdout().execute(terminal::ScrollUp(n)))?;
@@ -46,6 +59,20 @@ fn terminal(_py: Python, m: &PyModule) -> PyResult<()> {
     #[pyfn(m, "leave_alternate_screen")]
     fn leave_alternate_screen_py() -> PyResult<()> {
         errconv(stdout().execute(terminal::LeaveAlternateScreen))?;
+        Ok(())
+    }
+    #[pyfn(m, "size")]
+    fn size_py() -> PyResult<(u16, u16)> {
+        Ok(errconv(terminal::size())?)
+    }
+    #[pyfn(m, "enable_raw_mode")]
+    fn enable_raw_mode_py() -> PyResult<()> {
+        errconv(terminal::enable_raw_mode())?;
+        Ok(())
+    }
+    #[pyfn(m, "disable_raw_mode")]
+    fn disable_raw_mode_py() -> PyResult<()> {
+        errconv(terminal::disable_raw_mode())?;
         Ok(())
     }
     Ok(())
@@ -92,13 +119,13 @@ fn attribute_from_string(s: String) -> Option<style::Attribute> {
 #[pymodule]
 fn style(_py: Python, m: &PyModule) -> PyResult<()> {
     #[pyfn(m, "set_foreground_color")]
-    fn set_foreground_color_py(r: u8, g: u8, b: u8) -> PyResult<()> {
-        errconv(stdout().execute(style::SetForegroundColor(style::Color::Rgb { r, g, b })))?;
+    fn set_foreground_color_py(color: Color) -> PyResult<()> {
+        errconv(stdout().execute(style::SetForegroundColor(convert_color(&color))))?;
         Ok(())
     }
     #[pyfn(m, "set_background_color")]
-    fn set_background_color_py(r: u8, g: u8, b: u8) -> PyResult<()> {
-        errconv(stdout().execute(style::SetBackgroundColor(style::Color::Rgb { r, g, b })))?;
+    fn set_background_color_py(color: Color) -> PyResult<()> {
+        errconv(stdout().execute(style::SetBackgroundColor(convert_color(&color))))?;
         Ok(())
     }
     #[pyfn(m, "reset_color")]
@@ -185,16 +212,16 @@ impl StyledContent {
         StyledContent {
             string,
             foreground_color: Color {
-                r: 255,
-                g: 255,
-                b: 255,
-                color_name: String::new(),
+                r: 0,
+                g: 0,
+                b: 0,
+                color_name: String::from("Reset"),
             },
             background_color: Color {
-                r: 255,
-                g: 255,
-                b: 255,
-                color_name: String::new(),
+                r: 0,
+                g: 0,
+                b: 0,
+                color_name: String::from("Black"),
             },
             attributes: Vec::new(),
         }
@@ -249,8 +276,69 @@ fn convert_color(color: &Color) -> style::Color {
     }
 }
 
+#[pyfunction]
+fn rgb_py(r: u8, g: u8, b: u8) -> PyResult<Color> {
+    Ok(Color {
+        r,
+        g,
+        b,
+        color_name: String::new(),
+    })
+}
+
+#[pymodule]
+fn color(py: Python, m: &PyModule) -> PyResult<()> {
+    use pyo3::wrap_pyfunction;
+    m.add("rgb", wrap_pyfunction!(rgb_py)(py))?;
+
+    let all_colors = [
+        "Reset",
+        "Black",
+        "DarkGrey",
+        "Red",
+        "DarkRed",
+        "Green",
+        "DarkGreen",
+        "Yellow",
+        "DarkYellow",
+        "Blue",
+        "DarkBlue",
+        "Magenta",
+        "DarkMagenta",
+        "Cyan",
+        "DarkCyan",
+        "White",
+        "Grey",
+    ];
+
+    for c in all_colors.iter() {
+        let obj = PyCell::new(
+            py,
+            Color {
+                r: 0,
+                g: 0,
+                b: 0,
+                color_name: String::from(*c),
+            },
+        )
+        .unwrap();
+        #[allow(unused_must_use)]
+        {
+            m.add(c, obj);
+        }
+    }
+
+    Ok(())
+}
+
 #[pymodule]
 fn event(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add("MouseDown", "MouseDown").unwrap();
+    m.add("MouseUp", "MouseUp").unwrap();
+    m.add("MouseDrag", "MouseDrag").unwrap();
+    m.add("ScrollDown", "ScrollDown").unwrap();
+    m.add("ScrollUp", "ScrollUp").unwrap();
+
     #[pyclass]
     struct PyEvent {
         #[pyo3(get, set)]
@@ -343,102 +431,31 @@ fn event(_py: Python, m: &PyModule) -> PyResult<()> {
 
 #[pymodule]
 fn attribute(_py: Python, m: &PyModule) -> PyResult<()> {
-    #[pyfn(m, "Reset")]
-    fn reset_py() -> PyResult<String> {
-        Ok(String::from("Reset"))
-    }
-    #[pyfn(m, "Bold")]
-    fn bold_py() -> PyResult<String> {
-        Ok(String::from("Bold"))
-    }
-    #[pyfn(m, "Dim")]
-    fn dim_py() -> PyResult<String> {
-        Ok(String::from("Dim"))
-    }
-    #[pyfn(m, "Italic")]
-    fn italic_py() -> PyResult<String> {
-        Ok(String::from("Italic"))
-    }
-    #[pyfn(m, "Underlined")]
-    fn underlined_py() -> PyResult<String> {
-        Ok(String::from("Underlined"))
-    }
-    #[pyfn(m, "SlowBlink")]
-    fn slowblink_py() -> PyResult<String> {
-        Ok(String::from("SlowBlink"))
-    }
-    #[pyfn(m, "RapidBlink")]
-    fn rapidblink_py() -> PyResult<String> {
-        Ok(String::from("RapidBlink"))
-    }
-    #[pyfn(m, "Reverse")]
-    fn reverse_py() -> PyResult<String> {
-        Ok(String::from("Reverse"))
-    }
-    #[pyfn(m, "Hidden")]
-    fn hidden_py() -> PyResult<String> {
-        Ok(String::from("Hidden"))
-    }
-    #[pyfn(m, "CrossedOut")]
-    fn crossedout_py() -> PyResult<String> {
-        Ok(String::from("CrossedOut"))
-    }
-    #[pyfn(m, "Fraktur")]
-    fn fraktur_py() -> PyResult<String> {
-        Ok(String::from("Fraktur"))
-    }
-    #[pyfn(m, "NoBold")]
-    fn nobold_py() -> PyResult<String> {
-        Ok(String::from("NoBold"))
-    }
-    #[pyfn(m, "NormalIntensity")]
-    fn normalintensity_py() -> PyResult<String> {
-        Ok(String::from("NormalIntensity"))
-    }
-    #[pyfn(m, "NoItalic")]
-    fn noitalic_py() -> PyResult<String> {
-        Ok(String::from("NoItalic"))
-    }
-    #[pyfn(m, "NoUnderline")]
-    fn nounderline_py() -> PyResult<String> {
-        Ok(String::from("NoUnderline"))
-    }
-    #[pyfn(m, "NoBlink")]
-    fn noblink_py() -> PyResult<String> {
-        Ok(String::from("NoBlink"))
-    }
-    #[pyfn(m, "NoReverse")]
-    fn noreverse_py() -> PyResult<String> {
-        Ok(String::from("NoReverse"))
-    }
-    #[pyfn(m, "NoHidden")]
-    fn nohidden_py() -> PyResult<String> {
-        Ok(String::from("NoHidden"))
-    }
-    #[pyfn(m, "NotCrossedOut")]
-    fn notcrossedout_py() -> PyResult<String> {
-        Ok(String::from("NotCrossedOut"))
-    }
-    #[pyfn(m, "Framed")]
-    fn framed_py() -> PyResult<String> {
-        Ok(String::from("Framed"))
-    }
-    #[pyfn(m, "Encircled")]
-    fn encircled_py() -> PyResult<String> {
-        Ok(String::from("Encircled"))
-    }
-    #[pyfn(m, "OverLined")]
-    fn overlined_py() -> PyResult<String> {
-        Ok(String::from("OverLined"))
-    }
-    #[pyfn(m, "NotFramedOrEncir")]
-    fn notframedorencir_py() -> PyResult<String> {
-        Ok(String::from("NotFramedOrEncir"))
-    }
-    #[pyfn(m, "NotOverLined")]
-    fn notoverlined_py() -> PyResult<String> {
-        Ok(String::from("NotOverLined"))
-    }
+    m.add("Reset", "Reset").unwrap();
+    m.add("Bold", "Bold").unwrap();
+    m.add("Dim", "Dim").unwrap();
+    m.add("Italic", "Italic").unwrap();
+    m.add("Underlined", "Underlined").unwrap();
+    m.add("SlowBlink", "SlowBlink").unwrap();
+    m.add("RapidBlink", "RapidBlink").unwrap();
+    m.add("Reverse", "Reverse").unwrap();
+    m.add("Hidden", "Hidden").unwrap();
+    m.add("CrossedOut", "CrossedOut").unwrap();
+    m.add("Fraktur", "Fraktur").unwrap();
+    m.add("NoBold", "NoBold").unwrap();
+    m.add("NormalIntensity", "NormalIntensity").unwrap();
+    m.add("NoItalic", "NoItalic").unwrap();
+    m.add("NoUnderline", "NoUnderline").unwrap();
+    m.add("NoBlink", "NoBlink").unwrap();
+    m.add("NoReverse", "NoReverse").unwrap();
+    m.add("NoHidden", "NoHidden").unwrap();
+    m.add("NotCrossedOut", "NotCrossedOut").unwrap();
+    m.add("Framed", "Framed").unwrap();
+    m.add("Encircled", "Encircled").unwrap();
+    m.add("OverLined", "OverLined").unwrap();
+    m.add("NotFramedOrEncircled", "NotFramedOrEncircled")
+        .unwrap();
+    m.add("NotOverLined", "NotOverLined").unwrap();
     Ok(())
 }
 
@@ -531,12 +548,19 @@ fn cursor(_py: Python, m: &PyModule) -> PyResult<()> {
 }
 
 #[pymodule]
-fn pycrossterm(_py: Python, m: &PyModule) -> PyResult<()> {
+fn pycrossterm(py: Python, m: &PyModule) -> PyResult<()> {
+    use pyo3::wrap_pyfunction;
+
+    // Here for convenience, this is also in the color module
+    m.add("rgb", wrap_pyfunction!(rgb_py)(py))?;
+
     m.add_wrapped(wrap_pymodule!(cursor))?;
     m.add_wrapped(wrap_pymodule!(event))?;
     m.add_wrapped(wrap_pymodule!(style))?;
     m.add_wrapped(wrap_pymodule!(terminal))?;
     m.add_wrapped(wrap_pymodule!(attribute))?;
+    m.add_wrapped(wrap_pymodule!(color))?;
+
     m.add_class::<StyledContent>()?;
     Ok(())
 }
