@@ -1,12 +1,13 @@
 //#![feature(proc_macro, specialization, const_fn)]
 //rustup override set nightly
 
-use crossterm::event::{read, DisableMouseCapture, EnableMouseCapture, Event, MouseEvent};
+use crossterm::event::{poll, read, DisableMouseCapture, EnableMouseCapture, Event, MouseEvent};
 use crossterm::{cursor, style, terminal, ExecutableCommand};
 use pyo3::exceptions;
 use pyo3::prelude::*;
 use pyo3::{wrap_pymodule, PyErr, PyResult};
 use std::io::stdout;
+use std::time::Duration;
 
 #[pymodule]
 fn terminal(_py: Python, m: &PyModule) -> PyResult<()> {
@@ -162,23 +163,9 @@ fn style(_py: Python, m: &PyModule) -> PyResult<()> {
         })
     }
 
-    #[pyfn(m, "color")]
-    fn color_py(r: u8, g: u8, b: u8) -> PyResult<Color> {
-        Ok(Color {
-            r,
-            g,
-            b,
-            color_name: String::new(),
-        })
-    }
-    #[pyfn(m, "named_color")]
-    fn named_color_py(s: String) -> PyResult<Color> {
-        Ok(Color {
-            r: 0,
-            g: 0,
-            b: 0,
-            color_name: s,
-        })
+    #[pyfn(m, "available_color_count")]
+    fn available_color_count_py() -> PyResult<u16> {
+        Ok(style::available_color_count())
     }
     Ok(())
 }
@@ -414,6 +401,11 @@ fn event(_py: Python, m: &PyModule) -> PyResult<()> {
         }
     }
 
+    #[pyfn(m, "poll")]
+    fn poll_py(timeout: u64) -> PyResult<bool> {
+        Ok(errconv(poll(Duration::from_secs(timeout)))?)
+    }
+
     #[pyfn(m, "enable_mouse_capture")]
     fn enable_mouse_capture_py() -> PyResult<()> {
         errconv(stdout().execute(EnableMouseCapture))?;
@@ -543,6 +535,10 @@ fn cursor(_py: Python, m: &PyModule) -> PyResult<()> {
     fn move_to_previous_line_py(n: u16) -> PyResult<()> {
         errconv(stdout().execute(cursor::MoveToPreviousLine(n)))?;
         Ok(())
+    }
+    #[pyfn(m, "position")]
+    fn position_py() -> PyResult<(u16, u16)> {
+        Ok(errconv(cursor::position())?)
     }
     Ok(())
 }
