@@ -334,6 +334,7 @@ fn event(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add("MouseDrag", "MouseDrag").unwrap();
     m.add("ScrollDown", "ScrollDown").unwrap();
     m.add("ScrollUp", "ScrollUp").unwrap();
+    m.add("Resize", "Resize").unwrap();
 
     #[pyclass]
     struct PyEvent {
@@ -402,7 +403,7 @@ fn event(_py: Python, m: &PyModule) -> PyResult<()> {
                     x,
                     y,
                     key: String::from(""),
-                    event: String::from("Key"),
+                    event: String::from("Resize"),
                     modifiers: String::from(""),
                 }),
             },
