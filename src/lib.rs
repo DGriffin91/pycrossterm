@@ -233,6 +233,15 @@ impl StyledContent {
         Ok(slf.into())
     }
 
+    pub fn set_string(mut slf: PyRefMut<Self>, string: String) -> PyResult<Py<Self>> {
+        slf.string = string;
+        Ok(slf.into())
+    }
+
+    pub fn duplicate(slf: PyRefMut<Self>) -> Self {
+        slf.clone()
+    }
+
     pub fn print(slf: PyRefMut<Self>) -> PyResult<()> {
         let mut styled = style::style(&slf.string[..]);
         styled = styled.with(convert_color(&slf.foreground_color));
@@ -402,8 +411,8 @@ fn event(_py: Python, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m, "poll")]
-    fn poll_py(timeout: u64) -> PyResult<bool> {
-        Ok(errconv(poll(Duration::from_secs(timeout)))?)
+    fn poll_py(timeout: f64) -> PyResult<bool> {
+        Ok(errconv(poll(Duration::from_micros((timeout*1000000.0) as u64)))?)
     }
 
     #[pyfn(m, "enable_mouse_capture")]
